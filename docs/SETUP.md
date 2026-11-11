@@ -50,7 +50,7 @@ TRIP=ireland npm run check-data
 
 ## 🎬 Reel Studio (the trip's video editor)
 
-`studio/` is its own project: drop each night's GoPro and iPhone footage on the Mac, and it cuts a vertical **Instagram vlog**, a **YouTube episode**, a **cinematic short**, a **teaser reel** and a **photo dump** for every day, plus a **trip film**. The edits are story-driven (Claude plans them from the footage, what was said and this itinerary), colour-graded and cut to the day's song. See [studio/README.md](studio/README.md).
+[Reel Studio](https://github.com/AnkithMareddy/reel-studio) is a separate repo now: drop each night's GoPro and iPhone footage on the Mac and it cuts a vertical **Instagram vlog**, a **YouTube episode**, a **cinematic short**, a **teaser reel** and a **photo dump** for every day, plus a **trip film**. Point its `TRIPS_DIR` at this repo's `trips/` and the edits are story-driven from this itinerary, colour-graded and cut to the day's song.
 
 ---
 

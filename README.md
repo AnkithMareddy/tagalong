@@ -6,7 +6,7 @@ I built it for two real trips in October 2026 — a London city break and an Ire
 
 It knows the itinerary, watches everyone's live location, and messages the group at the right moment: when to leave, what's nearby, what to book, and when a plan is about to fall apart.
 
-The same repo also holds **[Reel Studio](studio/)**, an AI video editor that turns each day's footage into finished edits overnight.
+Its companion, **[Reel Studio](https://github.com/AnkithMareddy/reel-studio)**, cuts each day's footage into finished edits overnight. It used to live in this repo and is now its own; point it at this repo's `trips/` and it titles every edit from the day's real plan.
 
 ## What it does
 
@@ -88,11 +88,15 @@ See [docs/SETUP.md](docs/SETUP.md) for the Telegram and API key setup.
 - One codebase runs multiple trips: each trip is a folder of JSON (`trips/london`, `trips/ireland`)
 - **62 automated tests** (`npm test`), plus a simulator that replays a whole trip and prints every message the bot would send
 
-## Reel Studio
+## Reel Studio (now its own repo)
 
-An AI video editor for the same trips. Drop the day's GoPro and iPhone footage in a folder at night, and by morning there's an Instagram vlog, a YouTube episode, a cinematic short, a teaser reel, and a photo dump.
+The video editor that cut these trips lives at
+**[AnkithMareddy/reel-studio](https://github.com/AnkithMareddy/reel-studio)**. It was
+`studio/` in this repo until it outgrew being a subfolder of a Telegram bot.
 
-It scores every clip for sharpness, faces, and loud moments, transcribes speech with Whisper, then has Claude plan each edit as a story (hook, setup, journey, peak, payoff). It cuts to the beat of the day's song, color-grades with custom LUTs, and mixes to platform loudness. Python, FFmpeg, MLX Whisper, Claude API. See [studio/README.md](studio/README.md).
+It still pairs with this one: clone it next to this repo, or set `TRIPS_DIR` to this
+repo's `trips/`, and each day's edit is titled from that day's plan with every shot
+knowing where it was filmed.
 
 ## Run it
 
