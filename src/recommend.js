@@ -1,13 +1,12 @@
 import { distanceM } from './geo.js';
 import { minutesUntilClose } from './hours.js';
 import { londonParts, addMin } from './time.js';
+import { DEFAULT_INTERESTS } from './interests.js';
 
-// How much this group cares about each category (0–1).
-const INTEREST = {
-  streetwear: 1, sneakers: 0.95, fashion: 0.85, vintage: 0.8, music: 0.8, sports: 0.8,
-  food: 0.6, market: 0.7, filming: 0.6, movies: 0.5, sights: 0.65, sportsbar: 0.5, venue: 0.3,
-  nature: 0.85, pub: 0.7, history: 0.65, drive: 0.7, shopping: 0.85,
-};
+// How much a group cares about each category (0-1) now lives in interests.js, because
+// the values that used to sit here were one friend group's taste hardcoded into the
+// scorer. Pass `interests` to rankPlaces to override per trip; omitting it keeps the
+// original weights, so existing trips score exactly as before.
 
 // Words people might text -> categories/tags.
 export const REQUEST_CATEGORIES = [
@@ -47,7 +46,7 @@ export function quickMinutes(a, b, drive = false) {
  * opts: { places, here, now, gapMin, nextStop, categories, exclude:Set, dayAreas:[], mealTime }
  */
 export function rankPlaces(opts) {
-  const { places, here, now, gapMin = 180, nextStop = null, categories = null, exclude = new Set(), dayAreas = [], drive = false } = opts;
+  const { places, here, now, gapMin = 180, nextStop = null, categories = null, exclude = new Set(), dayAreas = [], drive = false, interests = DEFAULT_INTERESTS } = opts;
   const qm = (a, b) => quickMinutes(a, b, drive);
   const p = londonParts(now);
   const meal = (p.minutes >= 690 && p.minutes <= 870) || (p.minutes >= 1080 && p.minutes <= 1290);
@@ -64,7 +63,7 @@ export function rankPlaces(opts) {
     const direct = nextStop ? qm(here, nextStop) : 0;
     // With lots of time, don't drag them toward the evening plan yet; with little time, stay on the way.
     const detour = nextStop && gapMin < 180 ? Math.max(0, travelTo + onward - direct) : travelTo;
-    let score = (INTEREST[place.category] ?? 0.5) * 10;
+    let score = (interests[place.category] ?? 0.5) * 10;
     if (place.category === 'food' || (place.tags || []).includes('food')) score += meal ? 3 : -1;
     if (dayAreas.includes(place.neighborhood)) score += 2;
     if (place.wishlist) score += 5; // someone in the group asked for it

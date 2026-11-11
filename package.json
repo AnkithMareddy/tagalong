@@ -1,8 +1,8 @@
 {
-  "name": "london-trip-bot",
+  "name": "tagalong",
   "version": "1.0.0",
   "private": true,
-  "description": "Location-aware Telegram trip assistant for London, Oct 9-12 2026",
+  "description": "A travel agent that lives in your group chat: turns your saved places into an itinerary, then follows the trip with live transit, nearby picks and reminders.",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -13,7 +13,9 @@
     "simulate": "node scripts/simulate.js",
     "simulate:live": "node --env-file=.env scripts/simulate.js --live",
     "check-data": "node scripts/check-data.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "setup": "node scripts/setup.js",
+    "import": "node scripts/import-places.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0"

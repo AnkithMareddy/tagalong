@@ -1,6 +1,8 @@
 # AI Travel Agent
 
-A Claude-powered travel agent that lives in a Telegram group chat and follows a group of friends around a trip. I built it for two real trips in October 2026, a London city break and an Ireland road trip, and ran it live for five of us.
+A Claude-powered travel agent that lives in a Telegram group chat and follows a group of friends around a trip. Drop in the places you already saved from Google Maps, Instagram and TikTok; it builds the days, then runs the trip from the chat.
+
+I built it for two real trips in October 2026 — a London city break and an Ireland road trip — and ran it live for five of us, then generalised it so anyone can set one up (`npm run setup`).
 
 It knows the itinerary, watches everyone's live location, and messages the group at the right moment: when to leave, what's nearby, what to book, and when a plan is about to fall apart.
 
@@ -23,6 +25,59 @@ The same repo also holds **[Reel Studio](studio/)**, an AI video editor that tur
 - Reads booking screenshots and turns them into check-in and check-out reminders
 - Tracks who paid for what and settles up through Splitwise
 - Runs polls, remembers the group conversation, and answers questions in plain English
+
+## Use it for your own trip
+
+The bot is driven by two files per trip, so setting one up is mostly answering
+questions and pointing it at the places you have already saved.
+
+```bash
+npm install
+npm run setup            # asks about the trip and what you are into
+```
+
+Setup writes `trips/<your-trip>/itinerary.json`. The questions about interests are
+the part that matters: how much a group cares about each category used to be a
+`const INTEREST` literal inside `src/recommend.js`, tuned for five of us who are
+into streetwear — so anyone else deploying this got recommendations for somebody
+else's taste. Your answers become `trip.interests`, and the scorer reads them per
+trip. Say you want to skip tourist landmarks and it will stop suggesting them.
+
+### Bring the places you already saved
+
+```bash
+npm run import -- "~/Takeout/Maps (your places)/Saved Places.json" --trip your-trip
+npm run import -- saved-list.csv links-from-the-group-chat.txt --trip your-trip --merge
+```
+
+It reads whatever you actually have:
+
+| Source | How |
+|---|---|
+| **Google Takeout** — `Maps (your places)/Saved Places.json` | GeoJSON, full addresses and coordinates |
+| **A Google Maps list exported as CSV** | Column names vary, and some of these exports carry only a name and a URL — so coordinates are recovered from the Maps URL when the fields don't have them |
+| **Instagram / TikTok / Maps links** pasted out of a group chat | Recognised and kept, with what still needs doing |
+
+**Nothing is ever given an invented coordinate.** A place with a guessed location
+is worse than a missing one, because the bot would route the group to it. Anything
+it cannot place goes to `places.unresolved.json` with the reason — an Instagram
+reel has to be opened by a human to find out what the place even is, and a
+`maps.app.goo.gl` short link has to be expanded once.
+
+Two things in these formats fail silently if you get them wrong, so they are
+tested rather than assumed: GeoJSON coordinates are **longitude first**, and the
+`@lat,lng` in a Maps URL is the **viewport centre**, not the pin — the pin is in
+`!3d/!4d`. Imports that fall back to the viewport say so in the place's `verified`
+field.
+
+Then fill in each place's `category` and `neighborhood`, and check it:
+
+```bash
+TRIP=your-trip npm run check-data
+TRIP=your-trip npm run simulate      # walk the whole trip offline, no API keys
+```
+
+See [docs/SETUP.md](docs/SETUP.md) for the Telegram and API key setup.
 
 ## How it works
 

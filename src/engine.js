@@ -2,6 +2,7 @@ import { londonParts, hhmm, addMin, minutesBetween, localToDate, shiftDate, dayL
 import { distanceM, areaAt, inRegion } from './geo.js';
 import { googleMapsLink, citymapperLink, googleSearchLink } from './links.js';
 import { rankPlaces, pickVaried, categoriesFor, quickMinutes } from './recommend.js';
+import { resolveInterests } from './interests.js';
 import { describeHours } from './hours.js';
 import { resolveWish, norm, MAPS_LINK, resolveMapsLink, guessCategory } from './wishlist.js';
 import { newTrack } from './store.js';
@@ -141,6 +142,11 @@ export class Engine {
   dayMode(now) { return this.data.days[londonParts(now).date]?.transport || null; }
   route(from, to, now) { return this.transit.route(from, to, now, this.dayMode(now)); }
   driving(now = this.now()) { return this.data.trip.transport === 'drive' && this.dayMode(now) !== 'city'; }
+
+  // The group's category weights, from itinerary.json's `trip.interests` if it sets any,
+  // otherwise the defaults. Resolved per access so an edited trip file takes effect on
+  // the next tick without a restart.
+  get interests() { return resolveInterests(this.data.trip); }
   quick(a, b, now = this.now()) { return quickMinutes(a, b, this.driving(now)); }
   weatherFor(date) { return this.weather.forDay(date, this.data.days[date]?.base || this.data.trip.home); }
   inRegion(p) { return inRegion(this.data.trip.region, p); }
@@ -761,7 +767,7 @@ export class Engine {
     if (area.home || area.announce === false || this.tr.keys[key]) return;
     if (this.currentBlock(now)?.fixed || this.committedPlan(now) || this.tripOver(now) || !this.canUnprompted(now)) return;
     const gap = await this.exactGap(now, loc);
-    const ranked = rankPlaces({ drive: this.driving(now),  places: this.allPlaces().filter((p) => p.neighborhood === area.id), here: loc, now, gapMin: Math.max(gap.gapMin, 30), exclude: this.excluded() });
+    const ranked = rankPlaces({ interests: this.interests, drive: this.driving(now),  places: this.allPlaces().filter((p) => p.neighborhood === area.id), here: loc, now, gapMin: Math.max(gap.gapMin, 30), exclude: this.excluded() });
     const picks = pickVaried(ranked, 2);
     const facts = {
       area: { name: area.name, blurb: area.blurb },
@@ -787,7 +793,7 @@ export class Engine {
     if (this.plans().some((pl) => pl.type === 'stop' && pl.start > now && londonParts(pl.start).date === p.date)) return;
     const gap = this.gapInfo(now, loc);
     if (gap.gapMin < 40) return;
-    const ranked = rankPlaces({ drive: this.driving(now), 
+    const ranked = rankPlaces({ interests: this.interests, drive: this.driving(now), 
       places: this.allPlaces(), here: loc, now, gapMin: gap.gapMin, nextStop: gap.next?.location,
       exclude: this.excluded(), dayAreas: this.data.days[p.date]?.areas || [],
     });
@@ -1216,8 +1222,8 @@ export class Engine {
     if (!block?.fixed && !this.tripOver(now) && gap.gapMin >= 30) {
       const date = londonParts(now).date;
       const base = { places: this.allPlaces(), here: from, now, gapMin: gap.gapMin, nextStop: gap.next?.location, dayAreas: this.data.days[date]?.areas || [] };
-      picks = pickVaried(rankPlaces({ drive: this.driving(now),  ...base, exclude: this.excluded() }), 2);
-      if (!picks.length) picks = pickVaried(rankPlaces({ drive: this.driving(now),  ...base, exclude: this.excluded({ includeSuggested: false }) }), 2);
+      picks = pickVaried(rankPlaces({ interests: this.interests, drive: this.driving(now),  ...base, exclude: this.excluded() }), 2);
+      if (!picks.length) picks = pickVaried(rankPlaces({ interests: this.interests, drive: this.driving(now),  ...base, exclude: this.excluded({ includeSuggested: false }) }), 2);
     }
     const facts = {
       now: `${dayLabel(now)} ${hhmm(now)}`,
@@ -1235,8 +1241,8 @@ export class Engine {
   async replyNearby(chatId, now, categories, request) {
     const from = this.origin();
     const base = { places: this.allPlaces(), here: from, now, gapMin: 240, categories };
-    let ranked = rankPlaces({ drive: this.driving(now),  ...base, exclude: this.excluded() });
-    if (ranked.length < 3) ranked = rankPlaces({ drive: this.driving(now),  ...base, exclude: this.excluded({ includeSuggested: false }) });
+    let ranked = rankPlaces({ interests: this.interests, drive: this.driving(now),  ...base, exclude: this.excluded() });
+    if (ranked.length < 3) ranked = rankPlaces({ interests: this.interests, drive: this.driving(now),  ...base, exclude: this.excluded({ includeSuggested: false }) });
     ranked.sort((a, b) => (b.score - b.travelTo * 0.4) - (a.score - a.travelTo * 0.4));
     const picks = pickVaried(ranked, 3);
     const gap = await this.exactGap(now, from);
@@ -1288,7 +1294,7 @@ export class Engine {
     const target = this.findDestination(query, now);
     const from = this.origin();
     if (!target) {
-      return this.sendHtml([chatId], 'reply', `I don't have "${esc(query)}" in the trip list. Here's a map search: <a href="${esc(googleSearchLink(query))}">Google Maps</a>`);
+      return this.sendHtml([chatId], 'reply', `I don't have "${esc(query)}" in the trip list. Here's a map search: <a href="${esc(googleSearchLink(query, this.data.trip.region?.name))}">Google Maps</a>`);
     }
     const route = await this.route(from, target, now);
     const plan = target.plan;
@@ -1342,7 +1348,7 @@ export class Engine {
   async replyAnswer(chatId, now, question, from, { attachments = [], quiet = false, receipt = null } = {}) {
     const origin = this.origin();
     const date = londonParts(now).date;
-    const ranked = rankPlaces({ drive: this.driving(now),  places: this.allPlaces(), here: origin, now, gapMin: 300, exclude: new Set(this.tr.skipped) }).slice(0, 12);
+    const ranked = rankPlaces({ interests: this.interests, drive: this.driving(now),  places: this.allPlaces(), here: origin, now, gapMin: 300, exclude: new Set(this.tr.skipped) }).slice(0, 12);
     const wd = londonParts(now).weekday;
     const gap = await this.exactGap(now, origin);
     const asker = from?.first_name || 'someone';
@@ -1679,7 +1685,7 @@ export class Engine {
     }
     const ideas = results.filter((r) => r.status === 'idea');
     if (ideas.length) {
-      lines.push(`⭐ Also saved (no exact map pin yet): ${ideas.map((r) => `<a href="${esc(googleSearchLink(r.query || r.name))}">${esc(r.name)}</a>`).join(', ')}`);
+      lines.push(`⭐ Also saved (no exact map pin yet): ${ideas.map((r) => `<a href="${esc(googleSearchLink(r.query || r.name, this.data.trip.region?.name))}">${esc(r.name)}</a>`).join(', ')}`);
     }
     if (dup.length) lines.push(`Already on the list: ${dup.map((r) => esc(r.name)).join(', ')}`);
     return lines.join('\n');
